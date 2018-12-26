@@ -1,48 +1,31 @@
-from Tkinter import *
+import numpy as np
 import sys
 sys.path.insert(0, '../libs')
 import mandelbrot
+from matplotlib import pyplot as plt
+from matplotlib import colors
 
 class Application(object):
 	def __init__(self):
-		self.width = 500
-		self.height = 500
-		self.setup_root()
 
-		self.current_window = (-1, 1, -1, 1)
+		self.xmin = -2;
+		self.xmax = 1;
+		self.ymin = -1;
+		self.ymax = 1;
 
-	def setup_root(self):
-		root = Tk()
-		canvas = Canvas(root, width = self.width, height = self.height)
-		canvas.pack()
+		resolution = 200
+		self.width = (self.xmax - self.xmin) * resolution
+		self.height = (self.ymax - self.ymin) * resolution
 
-		root.bind("<Key>", lambda event:
-                            self.key_pressed(event))
-
-		#hold on to references
-		self.root = root
-		self.canvas = canvas
-
-	def key_pressed(self, event):
-		self.mandel_update()
-
-	def mandel_update(self):
-		a = []
-		row_range = self.current_window[1] - self.current_window[0]
-		col_range = self.current_window[3] - self.current_window[2]
-		for row in range(self.height):
-			for col in range(self.width):
-				i = 2 * row / (row_range) - 1 #shift to current window
-				j = 2 * col / (col_range) - 1
-				n = mandelbrot.iterate(i, j)
-				a.append(n)
-
-		print (max(a))
-		print (min(a))
+		self.max_iter = 100;
 
 
-	def run(self):
-		self.root.mainloop()
+	def update_img(self):
+		mandel_img = mandelbrot.mandel_set(self.xmin, self.xmax, self.ymin, self.ymax, self.width, self.height, self.max_iter)
+		plt.imshow(mandel_img, extent=[self.xmin, self.xmax, self.ymin, self.ymax])
+		plt.show()
 
 
-Application().run()
+
+
+Application().update_img()
