@@ -8,13 +8,15 @@ find_package( OpenCV REQUIRED)
 find_package( Boost REQUIRED COMPONENTS filesystem program_options)
 
 include_directories(
-	include
 	${Boost_INCLUDE_DIRS}
 )
 
 add_library(mandel_tools
-	src/Mandel.cpp
+	src/mandel.cpp
 )
 
-add_executable(mandel tools/main.cpp)
-target_link_libraries( mandel mandel_tools ${Boost_LIBRARIES} ${OpenCV_LIBS})
+add_executable(mandel_main src/mandel_main.cpp)
+target_link_libraries( mandel_main mandel_tools ${Boost_LIBRARIES} ${OpenCV_LIBS})
+
+add_executable(mandel_benchmark src/mandel_benchmark.cpp)
+target_link_libraries( mandel_benchmark mandel_tools ${Boost_LIBRARIES} ${OpenCV_LIBS})

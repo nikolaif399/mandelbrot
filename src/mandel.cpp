@@ -1,4 +1,4 @@
-#include "Mandel.h"
+#include "mandel.h"
 
 #define MAINTAIN_ASPECT_RATIO
 
@@ -10,7 +10,7 @@ Mandel::Mandel(coord_t xmin, coord_t ymin, coord_t xmax, coord_t ymax, const int
 	_ymax(ymax),
 	_num_threads(num_threads)
 {
-	_grid = cv::Mat::zeros(600, 600, CV_8UC1); // rows, cols
+	_grid = cv::Mat::zeros(200, 200, CV_8UC1); // rows, cols
 	cv::namedWindow(_window_name);
 	cv::setMouseCallback(_window_name, mouse_callback, this);
 }
@@ -40,7 +40,7 @@ void Mandel::mouse_callback(int event, int x, int y, int flags, void* this_addre
 			else
 			{
 				float aspect_ratio = cvRound(float(this_t->_grid.cols)/this_t->_grid.rows);
-								#ifdef MAINTAIN_ASPECT_RATIO
+				#ifdef MAINTAIN_ASPECT_RATIO
 				// Recompute xmax and ymax to ensure constant aspect ratio	
 				if (ymax - ymin > xmax - xmin)
 				{
