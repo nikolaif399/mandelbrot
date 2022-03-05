@@ -112,14 +112,29 @@ uchar Mandel::compute_cell_iter(int x_index, int y_index)
 {
 	std::pair<coord_t, coord_t> coords = convert_indices_to_complex(x_index, y_index);
 	uchar count = 0;
+  
+  /*
 	std::complex<coord_t> z(0,0);
 	std::complex<coord_t> C(coords.first, coords.second);
 	while ((std::pow(z.real(),2) + std::pow(z.imag(),2)) < 4 && count < _max_count)
 	{
 		z = std::pow(z, 2) + C;
 		++count;
-	}
-	return count;
+	}*/
+	
+  double x = coords.first;
+  double y = coords.second;
+  double zr = 0;
+  double zi = 0;
+  double zrtemp;
+  while(count < _max_count && zr*zr + zi*zi < 4) {
+    zrtemp = zr;
+    zr = zr*zr - zi*zi + x;
+    zi = 2*zrtemp*zi + y;
+    ++count;
+  }
+
+  return count;;
 }
 
 std::pair<coord_t, coord_t> Mandel::convert_indices_to_complex(int x_index, int y_index)

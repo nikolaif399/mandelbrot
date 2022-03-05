@@ -7,7 +7,7 @@ int main(int argc, char** argv)
   constexpr int num_iters = 20;
 
   std::cout << "Profiling on CPU..." << std::endl;
-  for (int num_threads : {1,2,4,8,16,32,64, 96}) {
+  for (int num_threads : {1,2,4,8,16,32,64}) {
 	  Mandel m(-2, -1.25, 0.5, 1.25, num_threads);
 
     auto start = std::chrono::steady_clock::now();
