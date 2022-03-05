@@ -3,17 +3,23 @@
 
 #define MAINTAIN_ASPECT_RATIO
 
-Mandel::Mandel(coord_t xmin, coord_t ymin, coord_t xmax, coord_t ymax, const int num_threads) :
-	_max_count(255),
-	_xmin(xmin),
-	_ymin(ymin),
-	_xmax(xmax),
-	_ymax(ymax),
-	_num_threads(num_threads)
+Mandel::Mandel(coord_t xmin, coord_t ymin, coord_t xmax, coord_t ymax, int width, int height, int num_threads) :
+	max_count_(255),
+	xmin_(xmin),
+	ymin_(ymin),
+	xmax_(xmax),
+	ymax_(ymax),
+  width_(width),
+  height_(height),
+	num_threads_(num_threads)
 {
-	_grid = cv::Mat::zeros(400, 400, CV_8UC1); // rows, cols
-	cv::namedWindow(_window_name);
-	cv::setMouseCallback(_window_name, mouse_callback, this);
+	grid_ = cv::Mat::zeros(width, height, CV_8UC1); // rows, cols
+	cv::namedWindow(window_name_);
+	cv::setMouseCallback(window_name_, mouse_callback, this);
+
+  #ifdef CUDA
+  kernel_wrapper_ = std::make_unique<MandelKernelWrapper>(width_, height_, max_count_);
+  #endif
 }
 
 void Mandel::mouse_callback(int event, int x, int y, int flags, void* this_address)
@@ -24,14 +30,14 @@ void Mandel::mouse_callback(int event, int x, int y, int flags, void* this_addre
 	switch(event)
 	{
 		case cv::EVENT_LBUTTONDOWN :
-			this_t->_mouse_pressed_pt = cv::Point2i(x,y);
+			this_t->mouse_pressed_pt_ = cv::Point2i(x,y);
 			break;
 		case cv::EVENT_LBUTTONUP :
-			int xmin = std::min(this_t->_mouse_pressed_pt.x, x);
-			int ymin = std::min(this_t->_mouse_pressed_pt.y, y);
+			int xmin = std::min(this_t->mouse_pressed_pt_.x, x);
+			int ymin = std::min(this_t->mouse_pressed_pt_.y, y);
 			
-			int xmax = std::max(this_t->_mouse_pressed_pt.x, x);
-			int ymax = std::max(this_t->_mouse_pressed_pt.y, y);
+			int xmax = std::max(this_t->mouse_pressed_pt_.x, x);
+			int ymax = std::max(this_t->mouse_pressed_pt_.y, y);
 
 			if (xmin == xmax && ymin == ymax)
 			{	
@@ -40,7 +46,7 @@ void Mandel::mouse_callback(int event, int x, int y, int flags, void* this_addre
 			}
 			else
 			{
-				float aspect_ratio = cvRound(float(this_t->_grid.cols)/this_t->_grid.rows);
+				float aspect_ratio = cvRound(float(this_t->width_)/this_t->height_);
 				#ifdef MAINTAIN_ASPECT_RATIO
 				// Recompute xmax and ymax to ensure constant aspect ratio	
 				if (ymax - ymin > xmax - xmin)
@@ -55,11 +61,11 @@ void Mandel::mouse_callback(int event, int x, int y, int flags, void* this_addre
 				#endif
 				std::pair<coord_t, coord_t> new_min_pt = this_t->convert_indices_to_complex(xmin, ymin);
 				std::pair<coord_t, coord_t> new_max_pt = this_t->convert_indices_to_complex(xmax, ymax);
-				this_t->_xmin = new_min_pt.first;
-				this_t->_ymin = new_min_pt.second;
-				this_t->_xmax = new_max_pt.first;
-				this_t->_ymax = new_max_pt.second;
-				this_t->compute_grid_iter_par();
+				this_t->xmin_ = new_min_pt.first;
+				this_t->ymin_ = new_min_pt.second;
+				this_t->xmax_ = new_max_pt.first;
+				this_t->ymax_ = new_max_pt.second;
+				this_t->compute_grid_iter_par_cpu();
 				this_t->display_grid();
 			}
 			break;	
@@ -69,85 +75,112 @@ void Mandel::mouse_callback(int event, int x, int y, int flags, void* this_addre
 void Mandel::set_size(cv::Size grid_size)
 {
 	cv::Mat new_grid;
-	cv::resize(_grid, new_grid, grid_size);
-	_grid = new_grid;
+	cv::resize(grid_, new_grid, grid_size);
+	grid_ = new_grid;
 }
 
-void Mandel::compute_grid_iter_par()
+#ifdef CUDA
+void Mandel::compute_grid_iter_par_gpu() {
+  int *iter_counts = kernel_wrapper_->call_kernel(-2,-1.25,0.5,1.25);
+  /* uchar* iter_counts_uchar = (uchar*)malloc(width_*height_*sizeof(uchar));
+  for (int i = 0; i < width_*height_; ++i) {
+    iter_counts_uchar[i] = iter_counts[i];
+  }
+
+  std::memcpy(grid_.data, iter_counts_uchar, width_*height_*sizeof(uchar));
+  */
+
+  for (int i = 0; i < height_; ++i)
+	{
+		for (int j = 0; j < width_; ++j)
+		{
+			grid_.at<uchar>(i,j) = iter_counts[i*width_+j];
+		}
+	}
+  cv::applyColorMap(grid_, colored_grid_, cv::COLORMAP_JET);
+}
+#endif
+
+void Mandel::compute_grid_iter_par_cpu()
 {
-	std::vector<std::thread> threads;
-	int xStep = cvRound(_grid.cols/_num_threads);
-	int yStep = _grid.rows;
-	for (int i = 0; i < _num_threads - 1; ++i)
-	{
-		cv::Rect r(xStep*i, 0, xStep, yStep);
-		threads.push_back(std::thread(&Mandel::compute_grid_iter, this, r));
-	}
-	// We handle the last thread differently because it may not
-	// have the same numbers of columns as the others
-	int finalXStep = _grid.cols - xStep * (_num_threads - 1);
-	cv::Rect r_final (xStep*(_num_threads-1), 0, finalXStep, yStep);
-	threads.push_back(std::thread(&Mandel::compute_grid_iter, this, r_final));
-	
-	// Wait for threads to complete
-	for (auto &t : threads)
-	{
-		t.join();
-	}
-	cv::applyColorMap(_grid, _colored_grid, cv::COLORMAP_JET);	
+  std::vector<std::thread> threads;
+  int xStep = cvRound(width_/num_threads_);
+  int yStep = height_;
+  for (int i = 0; i < num_threads_ - 1; ++i)
+  {
+    cv::Rect r(xStep*i, 0, xStep, yStep);
+    threads.push_back(std::thread(&Mandel::compute_grid_iter_cpu, this, r));
+  }
+  // We handle the last thread differently because it may not
+  // have the same numbers of columns as the others
+  int finalXStep = width_ - xStep * (num_threads_ - 1);
+  cv::Rect r_final (xStep*(num_threads_-1), 0, finalXStep, yStep);
+  threads.push_back(std::thread(&Mandel::compute_grid_iter_cpu, this, r_final));
+  
+  // Wait for threads to complete
+  for (auto &t : threads)
+  {
+    t.join();
+  }
+	cv::applyColorMap(grid_, colored_grid_, cv::COLORMAP_JET);	
 }
 
-void Mandel::compute_grid_iter(cv::Rect roi)
+void Mandel::compute_grid_iter_cpu(cv::Rect roi)
 {
 	for (int x_index = roi.x; x_index < roi.x + roi.width; ++x_index)
 	{
 		for (int y_index = roi.y; y_index < roi.y + roi.height; ++y_index)
 		{
-			int cell_value = compute_cell_iter(x_index, y_index);
-			_grid.at<uchar>(y_index,x_index) = cell_value;
+			int cell_value = compute_cell_iter_cpu_fast(x_index, y_index);
+			grid_.at<uchar>(y_index,x_index) = cell_value;
 		}
 	}
 }
 
-uchar Mandel::compute_cell_iter(int x_index, int y_index)
+uchar Mandel::compute_cell_iter_cpu_slow(int x_index, int y_index)
 {
 	std::pair<coord_t, coord_t> coords = convert_indices_to_complex(x_index, y_index);
 	uchar count = 0;
   
-  /*
 	std::complex<coord_t> z(0,0);
 	std::complex<coord_t> C(coords.first, coords.second);
-	while ((std::pow(z.real(),2) + std::pow(z.imag(),2)) < 4 && count < _max_count)
+	while ((std::pow(z.real(),2) + std::pow(z.imag(),2)) < 4 && count < max_count_)
 	{
 		z = std::pow(z, 2) + C;
 		++count;
-	}*/
-	
+	}
+  return count;
+}
+
+uchar Mandel::compute_cell_iter_cpu_fast(int x_index, int y_index)
+{
+	std::pair<coord_t, coord_t> coords = convert_indices_to_complex(x_index, y_index);
+	uchar count = 0;
   double x = coords.first;
   double y = coords.second;
   double zr = 0;
-  double zi = 0;
   double zrtemp;
-  while(count < _max_count && zr*zr + zi*zi < 4) {
+  double zi = 0;
+  while(count < max_count_ && zr*zr + zi*zi < 4) {
     zrtemp = zr;
     zr = zr*zr - zi*zi + x;
     zi = 2*zrtemp*zi + y;
     ++count;
   }
-
-  return count;;
+  return count;
 }
+
 
 std::pair<coord_t, coord_t> Mandel::convert_indices_to_complex(int x_index, int y_index)
 {
-	coord_t x = _xmin + (_xmax - _xmin) * coord_t(x_index)/_grid.cols;
-	coord_t y = _ymin + (_ymax - _ymin) * coord_t(y_index)/_grid.rows;
+	coord_t x = xmin_ + (xmax_ - xmin_) * coord_t(x_index)/width_;
+	coord_t y = ymin_ + (ymax_ - ymin_) * coord_t(y_index)/height_;
 	return std::make_pair(x,y);
 }
 
 void Mandel::display_grid()
 {
-	cv::imshow(_window_name, _colored_grid);
+	cv::imshow(window_name_, colored_grid_);
 	cv::waitKey();
 	cv::destroyAllWindows();
 }
@@ -155,11 +188,11 @@ void Mandel::display_grid()
 void Mandel::save_grid(std::string filename)
 {
 	std::cout << "Saving high resolution image to " << filename.c_str() << "... " << std::flush; 
-	cv::Mat grid_temp = _grid;
+	cv::Mat grid_temp = grid_;
 	const cv::Size SAVE_SIZE(4000, 4000);
 	this->set_size(SAVE_SIZE);
-	this->compute_grid_iter_par();
-	cv::imwrite(filename, this->_colored_grid);
-	_grid = grid_temp;
+	this->compute_grid_iter_par_cpu();
+	cv::imwrite(filename, this->colored_grid_);
+	grid_ = grid_temp;
 	std::cout << "Saved." << std::endl;
 }
