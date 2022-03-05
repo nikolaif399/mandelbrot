@@ -32,6 +32,5 @@ private:
 	
 	// OpenCV	
 	std::string _window_name = "Mandelbrot Window";	
-	cv::Mat _grid;
-	cv::Mat _colored_grid;
+	cv::Mat _grid, _colored_grid;
 };
