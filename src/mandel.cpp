@@ -1,4 +1,5 @@
 #include "mandel.h"
+#include <algorithm>
 
 #define MAINTAIN_ASPECT_RATIO
 
@@ -10,7 +11,7 @@ Mandel::Mandel(coord_t xmin, coord_t ymin, coord_t xmax, coord_t ymax, const int
 	_ymax(ymax),
 	_num_threads(num_threads)
 {
-	_grid = cv::Mat::zeros(200, 200, CV_8UC1); // rows, cols
+	_grid = cv::Mat::zeros(400, 400, CV_8UC1); // rows, cols
 	cv::namedWindow(_window_name);
 	cv::setMouseCallback(_window_name, mouse_callback, this);
 }
