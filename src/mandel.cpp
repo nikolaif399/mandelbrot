@@ -65,7 +65,7 @@ void Mandel::mouse_callback(int event, int x, int y, int flags, void* this_addre
 				this_t->ymin_ = new_min_pt.second;
 				this_t->xmax_ = new_max_pt.first;
 				this_t->ymax_ = new_max_pt.second;
-				this_t->compute_grid_iter_par_cpu();
+				this_t->compute_grid_iter_par_gpu();
 				this_t->display_grid();
 			}
 			break;	
@@ -81,7 +81,9 @@ void Mandel::set_size(cv::Size grid_size)
 
 #ifdef CUDA
 void Mandel::compute_grid_iter_par_gpu() {
+  printf("Kernel called.\n");
   int *iter_counts = kernel_wrapper_->call_kernel(-2,-1.25,0.5,1.25);
+  printf("Kernel returned.\n");
   /* uchar* iter_counts_uchar = (uchar*)malloc(width_*height_*sizeof(uchar));
   for (int i = 0; i < width_*height_; ++i) {
     iter_counts_uchar[i] = iter_counts[i];
