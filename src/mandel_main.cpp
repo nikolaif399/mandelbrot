@@ -22,7 +22,11 @@ int main(int argc, char** argv)
   constexpr int height = 1000;
 
 	Mandel m(-2, -1.25, 0.5, 1.25, width, height, num_threads);
-  m.compute_grid_iter_par_gpu();	
+  #ifdef CUDA
+  m.compute_grid_iter_par_gpu();
+  #else
+  m.compute_grid_iter_par_cpu();
+  #endif	
 	m.display_grid();
 	return 0;
 }

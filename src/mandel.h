@@ -27,7 +27,7 @@ private:
 	static void mouse_callback(int event, int x, int y, int flags, void* mouse_callback_address);
 	void compute_grid_iter_cpu(cv::Rect roi);
 	std::pair<coord_t, coord_t> convert_indices_to_complex(int x_index, int y_index);
-	uchar compute_cell_iter_cpu_fast(int x, int y);
+	uchar compute_cell_iter_cpu_fast(int x_index, int y_index);
   uchar compute_cell_iter_cpu_slow(int x_index, int y_index);
 	
 	// Parallelization

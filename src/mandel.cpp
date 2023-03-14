@@ -81,9 +81,7 @@ void Mandel::set_size(cv::Size grid_size)
 
 #ifdef CUDA
 void Mandel::compute_grid_iter_par_gpu() {
-  printf("Kernel called.\n");
-  int *iter_counts = kernel_wrapper_->call_kernel(-2,-1.25,0.5,1.25);
-  printf("Kernel returned.\n");
+  int *iter_counts = kernel_wrapper_->call_kernel(xmin_,ymin_, xmax_, ymax_);
   /* uchar* iter_counts_uchar = (uchar*)malloc(width_*height_*sizeof(uchar));
   for (int i = 0; i < width_*height_; ++i) {
     iter_counts_uchar[i] = iter_counts[i];

@@ -6,7 +6,7 @@ set(CMAKE_CXX_FLAGS "-std=c++17 -pthread")
 
 find_package( OpenCV REQUIRED)
 find_package( Boost REQUIRED COMPONENTS filesystem program_options)
-find_package(CUDA QUIET)
+find_package( CUDA QUIET)
 
 if (CUDA_FOUND)
   add_definitions(-DCUDA)
@@ -15,6 +15,7 @@ endif()
 
 include_directories(
 	${Boost_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 add_library(mandel_tools
