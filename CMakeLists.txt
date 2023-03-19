@@ -10,7 +10,7 @@ find_package( CUDA QUIET)
 
 if (CUDA_FOUND)
   add_definitions(-DCUDA)
-  set(CUDA_HOST_COMPILER /usr/bin/g++-6)
+  set(CUDA_HOST_COMPILER /usr/bin/g++-11)
 endif()
 
 include_directories(
