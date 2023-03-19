@@ -65,7 +65,11 @@ void Mandel::mouse_callback(int event, int x, int y, int flags, void* this_addre
 				this_t->ymin_ = new_min_pt.second;
 				this_t->xmax_ = new_max_pt.first;
 				this_t->ymax_ = new_max_pt.second;
+				#ifdef CUDA
 				this_t->compute_grid_iter_par_gpu();
+				#else
+				this_t->compute_grid_iter_par_cpu();
+				#endif
 				this_t->display_grid();
 			}
 			break;	

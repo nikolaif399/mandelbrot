@@ -22,6 +22,7 @@ int main(int argc, char** argv)
     std::cout << "With " << num_threads << " threads: " << elapsed_time_s << " s" <<std::endl; //std::setw(4) 
   }
 
+	#ifdef CUDA
   std::cout << "Profiling on GPU..." << std::endl;
   Mandel m(-2, -1.25, 0.5, 1.25, width, height, 1);
 
@@ -33,6 +34,7 @@ int main(int argc, char** argv)
   auto elapsed_time_s = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count()/1e9 / num_iters;
 
   std::cout << "GPU elapsed time: " << elapsed_time_s << " s" <<std::endl; //std::setw(4) 
+	#endif
 
 	return 0;
 }
